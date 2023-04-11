@@ -12,7 +12,7 @@ class AuthRepository {
       if (e.code == 'weak-password') {
         throw Exception('The password provided is too weak.');
       } else if (e.code == 'email-already-in-use') {
-        throw Exception('The account already exists for that email.');
+        throw Exception('Este correo ya está registrado en la aplicación.');
       }
     } catch (e) {
       throw Exception(e.toString());

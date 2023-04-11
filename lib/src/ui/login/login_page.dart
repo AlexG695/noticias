@@ -1,121 +1,168 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:news/src/ui/navegacion/navegacion.dart';
 import 'package:news/src/ui/signup/signup_page.dart';
 
-class LoginPage extends StatelessWidget {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passController = TextEditingController();
+import '../../utils/fire_auth.dart';
+import '../../utils/validator.dart';
 
-  LoginPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _emailTextController = TextEditingController();
+  final _passwordTextController = TextEditingController();
+
+  bool _isProcessing = false;
+
+  bool _isHiden = true;
+
+  void _tooglePasswordView() {
+    setState(() {
+      _isHiden = !_isHiden;
+    });
+  }
+
+  Future<FirebaseApp> _initializeFirebase() async {
+    FirebaseApp firebaseApp = await Firebase.initializeApp();
+
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => Navegacion(user: user),
+        ),
+        ModalRoute.withName('/'),
+      );
+    }
+
+    return firebaseApp;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _LoginEmail(emailController: _emailController),
-          const SizedBox(height: 15),
-          _LoginPassword(passwordController: _passController),
-          const SizedBox(height: 30),
-          _SubmitButton(
-            email: _emailController.text,
-            password: _passController.text,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            '-O-',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-          ),
-          const _CreateAccountButton()
-        ],
+      appBar: AppBar(
+        title: const Text('Inicio de sesión'),
       ),
-    );
-  }
-}
+      body: FutureBuilder(
+        future: _initializeFirebase(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return Padding(
+              padding: const EdgeInsets.only(left: 24.0, right: 24.0),
+              child: Column(
+                children: [
+                  const Padding(padding: EdgeInsets.only(bottom: 24.0)),
+                  Text('Ingresa tus credenciales para continuar',
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(
+                    height: 35,
+                  ),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: <Widget>[
+                        TextFormField(
+                          controller: _emailTextController,
+                          //focusNode: _focusEmail,
+                          validator: (value) => Validator.validateEmail(
+                            email: value,
+                          ),
+                          decoration: const InputDecoration(
+                            filled: true,
+                            border: OutlineInputBorder(),
+                            labelText: "Correo",
+                          ),
+                        ),
+                        const SizedBox(height: 8.0),
+                        TextFormField(
+                          controller: _passwordTextController,
+                          obscureText: _isHiden,
+                          validator: (value) => Validator.validatePassword(
+                            password: value,
+                          ),
+                          decoration: InputDecoration(
+                              filled: true,
+                              border: const OutlineInputBorder(),
+                              labelText: "Contraseña",
+                              suffixIcon: InkWell(
+                                onTap: _tooglePasswordView,
+                                child: Icon(_isHiden
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined),
+                              )),
+                        ),
+                        const SizedBox(height: 24.0),
+                        _isProcessing
+                            ? const CircularProgressIndicator()
+                            : Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        /*  _focusEmail.unfocus();
+                                        _focusPassword.unfocus(); */
 
-class _LoginEmail extends StatelessWidget {
-  _LoginEmail({
-    Key? key,
-    required this.emailController,
-  }) : super(key: key);
+                                        if (_formKey.currentState!.validate()) {
+                                          setState(() {
+                                            _isProcessing = true;
+                                          });
 
-  final TextEditingController emailController;
+                                          User? user = await FireAuth
+                                              .signInUsingEmailPassword(
+                                            email: _emailTextController.text,
+                                            password:
+                                                _passwordTextController.text,
+                                          );
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 7),
-      width: double.infinity,
-      child: const TextField(
-        decoration:
-            InputDecoration(border: OutlineInputBorder(), labelText: 'Correo'),
-      ),
-    );
-  }
-}
+                                          setState(() {
+                                            _isProcessing = false;
+                                          });
 
-class _LoginPassword extends StatelessWidget {
-  _LoginPassword({
-    Key? key,
-    required this.passwordController,
-  }) : super(key: key);
+                                          if (user != null) {
+                                            Navigator.pushNamedAndRemoveUntil(
+                                                context,
+                                                'inicio',
+                                                (route) => false);
+                                          }
+                                        }
+                                      },
+                                      child: const Text(
+                                        'Acceder',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            );
+          }
 
-  final TextEditingController passwordController;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 7),
-      width: double.infinity,
-      child: const TextField(
-        decoration: InputDecoration(
-            border: OutlineInputBorder(), labelText: 'Contraseña'),
-      ),
-    );
-  }
-}
-
-class _SubmitButton extends StatelessWidget {
-  _SubmitButton({
-    Key? key,
-    required this.email,
-    required this.password,
-  }) : super(key: key);
-
-  final String email, password;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () async {
-          print('hello');
+          return const Center(
+            child: CircularProgressIndicator(
+              color: Colors.blue,
+            ),
+          );
         },
-        child: const Text('Acceder'),
       ),
     );
-  }
-}
-
-class _CreateAccountButton extends StatelessWidget {
-  const _CreateAccountButton({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-        width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
-        child: OutlinedButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const SignUpPage(),
-                ),
-              );
-            },
-            child: const Text('Crear cuenta')));
   }
 }

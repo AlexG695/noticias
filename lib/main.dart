@@ -1,49 +1,43 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:news/src/blocs/auth/auth_bloc.dart';
 import 'package:news/src/repositories/auth_repository.dart';
 import 'package:news/src/ui/login/login_page.dart';
+import 'package:news/src/ui/navegacion/navegacion.dart';
+import 'package:news/src/ui/welcome/welcome.dart';
+import 'package:news/src/utils/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  MyApp({super.key});
+
+  User? user = FirebaseAuth.instance.currentUser;
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider(
-      create: (context) => AuthRepository(),
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-              create: (_) => AuthBloc(
-                  authRepository:
-                      RepositoryProvider.of<AuthRepository>(context)))
-        ],
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            useMaterial3: true,
-            // This is the theme of your application.
-            //
-            // Try running your application with "flutter run". You'll see the
-            // application has a blue toolbar. Then, without quitting the app, try
-            // changing the primarySwatch below to Colors.green and then invoke
-            // "hot reload" (press "r" in the console where you ran "flutter run",
-            // or simply save your changes to "hot reload" in a Flutter IDE).
-            // Notice that the counter didn't reset back to zero; the application
-            // is not restarted.
-            primarySwatch: Colors.blue,
-          ),
-          home: LoginPage(),
-        ),
-      ),
-    );
+    return ChangeNotifierProvider(
+        create: (_) => ThemeProvider(),
+        child: Consumer<ThemeProvider>(
+          builder: (context, ThemeProvider notifier, child) {
+            return MaterialApp(
+                routes: {
+                  'inicio': (context) => Navegacion(user: user!),
+                  'login': (context) => LoginPage()
+                },
+                debugShowCheckedModeBanner: false,
+                theme: notifier.darkTheme
+                    ? darkThemeData(context)
+                    : lightThemeData(context),
+                home: const Welcome());
+          },
+        ));
   }
 }
